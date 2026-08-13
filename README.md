@@ -1,96 +1,96 @@
 # AWE32Emu
 
-Základ projektu reálné emulace zvukového čipu **EMU8000** (Sound Blaster AWE32),
-vznikající kombinací oficiální specifikace čipu a reverzního inženýrství DOS
-ovladačů (AWEUTIL, CTVDSK.SYS a další). Cílem je nakonec C++ plugin, který
-půjde zabudovat do hry a přehraje `.mid`/`.xmi` hudbu přes register-accurate
-emulaci EMU8000 místo generického softsynthu.
+Foundation for a project aiming at a real emulation of the **EMU8000** sound
+chip (Sound Blaster AWE32), built by combining the official chip specification
+with reverse engineering of the DOS drivers (AWEUTIL, CTVDSK.SYS, etc.). The
+end goal is a C++ plugin that can be embedded into a game and play `.mid`/`.xmi`
+music through a register-accurate EMU8000 emulation instead of a generic
+softsynth.
 
-**Tohle je zakladní kostra, ne hotová emulace.** Aktuální stav a co (ne)funguje
-je popsané níže v sekci [Stav projektu](#stav-projektu).
+**This is a basic skeleton, not a finished emulation.** Current status and
+what does (not) work yet is described below in [Project status](#project-status).
 
-## Co to umí teď
+## What works right now
 
-- Konzolová aplikace pro Visual Studio 2022 (x64, C++17)
-- Parser `.mid` (Standard MIDI File, formát 0/1)
-- Parser `.xmi` (Miles Sound System / AIL formát – IFF kontejner, `EVNT` chunk,
-  převod XMI note-délky na explicitní Note Off)
-- Základní sekvencer, který ticky ze souboru převádí na reálný čas podle
-  tempo mapy
-- Volitelné načtení `.sbk` (SoundFont/E-mu banka) – zatím jen informativně,
-  vypíše seznam RIFF chunků, data se při přehrávání nepoužívají
-- Přehrávání přes Windows `winmm`/`waveOut` (žádné externí závislosti)
-- **Zvukové jádro je zatím jen placeholder** – jednoduchý 32-hlasý sinusový
-  syntetizátor se základní ADSR obálkou, aby šlo od začátku slyšet správný
-  rytmus a melodii. Skutečná emulace EMU8000 (voice engine, envelopy, filtr,
-  LFO, chorus/reverb) je hlavní práce, která teprve přijde.
+- Visual Studio 2022 console application (x64, C++17)
+- `.mid` parser (Standard MIDI File, format 0/1)
+- `.xmi` parser (Miles Sound System / AIL format - IFF container, `EVNT`
+  chunk, conversion of XMI note-length encoding into explicit Note Off events)
+- Basic sequencer that converts file ticks into real time using the tempo map
+- Optional `.sbk` (SoundFont/E-mu bank) loading - informational only for now,
+  it lists the RIFF chunks found; the data is not yet used during playback
+- Playback via Windows `winmm`/`waveOut` (no external dependencies)
+- **The sound engine is currently a placeholder** - a simple 32-voice sine-wave
+  synthesizer with a basic ADSR envelope, so that correct rhythm and melody
+  can be heard right from the start. The actual EMU8000 emulation (voice
+  engine, envelopes, filter, LFO, chorus/reverb) is the main work still ahead.
 
-## Sestavení
+## Building
 
-1. Otevřít `AWE32Emu.sln` ve Visual Studiu 2022
-2. Zvolit konfiguraci `Release` / `x64` (nebo `Debug` / `x64`)
-3. Build → výsledné `AWE32Emu.exe` bude v `bin\x64\Release\`
+1. Open `AWE32Emu.sln` in Visual Studio 2022
+2. Select the `Release` / `x64` configuration (or `Debug` / `x64`)
+3. Build - the resulting `AWE32Emu.exe` will be in `bin\x64\Release\`
 
-Žádné externí knihovny ani vcpkg balíčky nejsou potřeba – projekt používá jen
-standardní C++17 a Windows SDK (`winmm.lib`, linkováno automaticky).
+No external libraries or vcpkg packages are required - the project only uses
+standard C++17 and the Windows SDK (`winmm.lib`, linked automatically).
 
-## Použití
+## Usage
 
 ```
-AWE32Emu.exe skladba.mid
-AWE32Emu.exe skladba.xmi
-AWE32Emu.exe skladba.mid --sbk banka.sbk
+AWE32Emu.exe song.mid
+AWE32Emu.exe song.xmi
+AWE32Emu.exe song.mid --sbk bank.sbk
 ```
 
-## Struktura projektu
+## Project structure
 
 ```
 AWE32Emu.sln
 AWE32Emu/
   AWE32Emu.vcxproj
   src/
-    main.cpp            CLI vstupní bod, parsování argumentů, hlavní smyčka
-    MidiTypes.h          Sdílená reprezentace MIDI události (MidiEvent, ParsedSequence)
-    MidiFile.h/.cpp       Parser .mid (SMF)
-    XmiFile.h/.cpp        Parser .xmi
-    Sequencer.h/.cpp      Převod tiků na reálný čas, dispatch událostí do Synth
-    Synth.h/.cpp          Zvukové jádro (PLACEHOLDER – viz výše)
-    SoundFontSbk.h/.cpp    Základní RIFF loader pro .sbk/.sf2
-    AudioOutputWin.h/.cpp  Realtime výstup přes WinMM waveOut
+    main.cpp               CLI entry point, argument parsing, main loop
+    MidiTypes.h              Shared MIDI event representation (MidiEvent, ParsedSequence)
+    MidiFile.h/.cpp           .mid (SMF) parser
+    XmiFile.h/.cpp            .xmi parser
+    Sequencer.h/.cpp          Converts ticks to real time, dispatches events to Synth
+    Synth.h/.cpp              Sound engine (PLACEHOLDER - see above)
+    SoundFontSbk.h/.cpp        Basic RIFF loader for .sbk/.sf2
+    AudioOutputWin.h/.cpp      Realtime output via WinMM waveOut
 ```
 
-## Stav projektu / co chybí
+## Project status
 
-Podrobný rozpracovaný seznam úkolů (parsery, sekvencer, jádro EMU8000, SoundFont
-vrstva, plugin API, testování, reverse engineering DOS ovladačů v IDA) je mimo
-tento repozitář, v projektovém TODO dokumentu. Nejdůležitější otevřené body
-přímo v tomto kódu:
+A detailed, more granular task list (parsers, sequencer, EMU8000 core,
+SoundFont layer, plugin API, testing, DOS driver reverse engineering in IDA)
+lives outside this repository, in the project's TODO document. The most
+important open points directly in this code:
 
-- `Synth.cpp` – nahradit sinusový oscilátor register-accurate EMU8000 jádrem
-  (voice engine, envelope generátory, LFO, filtr, chorus/reverb)
-- `SoundFontSbk.cpp` – navázat načtená data (`shdr`, `phdr`, `sdta`/`smpl`) na
-  reálné přehrávání vzorků v `Synth`
-- `MidiFile.cpp`/`XmiFile.cpp` – SysEx zprávy (GS/GM/MT-32 reset), running
-  status v XMI, podpora SMPTE division u SMF
-- `Sequencer.cpp` – zatím renderuje po jednom snímku (`RenderBlock(..., 1)`) kvůli
-  jednoduchosti přesného časování; pro výkon půjde později optimalizovat
-- Plugin API – aktuálně je vše svázané v CLI `main.cpp`; oddělení do
-  znovupoužitelné knihovny/API je další krok
+- `Synth.cpp` - replace the sine oscillator with a register-accurate EMU8000
+  core (voice engine, envelope generators, LFO, filter, chorus/reverb)
+- `SoundFontSbk.cpp` - wire up the loaded data (`shdr`, `phdr`, `sdta`/`smpl`)
+  to actual sample playback in `Synth`
+- `MidiFile.cpp`/`XmiFile.cpp` - SysEx messages (GS/GM/MT-32 reset), running
+  status in XMI, SMF SMPTE division support
+- `Sequencer.cpp` - currently renders one frame at a time (`RenderBlock(..., 1)`)
+  for timing-accuracy simplicity; can be optimized for performance later
+- Plugin API - everything is currently tied into the CLI `main.cpp`; splitting
+  it into a reusable library/API is the next step
 
-## Poznámka k datům (licence/legalita)
+## Note on data (licensing/legality)
 
-Repozitář **záměrně neobsahuje** žádná vstupní data:
+This repository **deliberately contains no input data**:
 
-- žádné `.mid`/`.xmi` soubory z konkrétních her (autorská práva)
-- žádné `.sbk`/`.sf2` banky (originální Creative/E-mu banky jsou chráněné)
-- žádné binárky DOS ovladačů (AWEUTIL, CTVDSK.SYS apod.) ani jejich disassembly výstupy
+- no `.mid`/`.xmi` files from specific games (copyright)
+- no `.sbk`/`.sf2` banks (original Creative/E-mu banks are protected)
+- no DOS driver binaries (AWEUTIL, CTVDSK.SYS, etc.) or their disassembly output
 
-`.gitignore` tyto typy souborů vylučuje. Pro lokální testování si je stáhněte
-sami (viz VOGONS Driver Library pro DOS ovladače) a udržujte mimo commitovanou
-historii repozitáře.
+`.gitignore` excludes these file types. For local testing, download them
+yourself (see the VOGONS Driver Library for DOS drivers) and keep them out of
+the committed repository history.
 
-## Licence
+## License
 
-Kód v tomto repozitáři je vlastní implementace, ne odvozenina z DOS ovladačů
-ani z žádného existujícího SoundFont přehrávače. Licence projektu: doplnit
-podle preference (např. MIT) před zveřejněním.
+The code in this repository is an original implementation, not derived from
+any DOS driver or existing SoundFont player. Project license: to be decided
+(e.g. MIT) before publishing.
